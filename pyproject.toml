@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "traffic-streaming-pipeline"
+version = "0.1.0"
+description = "Streaming pipeline for vehicular traffic simulation data: UXSIM -> Redpanda -> Spark -> MongoDB."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "IBilba", email = "72385814+IBilba@users.noreply.github.com" }]
+keywords = ["streaming", "kafka", "redpanda", "spark", "mongodb", "uxsim", "traffic"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Intended Audience :: Education",
+]
+
+# Runtime dependencies are listed in requirements.txt to keep the Docker
+# build (single source of truth) simple. pyproject is used here for tooling
+# config and packaging metadata.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-mock>=3.14", "ruff>=0.6", "black>=24"]
+
+[project.urls]
+"Source" = "https://github.com/IBilba/traffic-streaming-pipeline"
+"Issues" = "https://github.com/IBilba/traffic-streaming-pipeline/issues"
+
+[project.scripts]
+# Console entry points installed when the package is `pip install -e .`'d.
+# Container CMDs invoke these via `python -m` paths instead — both work.
+traffic-producer = "traffic_pipeline.ingestion.kafka_publisher:main"
+traffic-consumer = "scripts.run_consumer:main"
+traffic-api      = "scripts.run_api:main"
+traffic-verify   = "scripts.verify_pipeline:main"
+
+# ----------------------------------------------------------------------------
+# Setuptools: source layout lives under src/
+# ----------------------------------------------------------------------------
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# ----------------------------------------------------------------------------
+# Ruff: lint + import sort (CLAUDE.md §7)
+# ----------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["Code/", "out/", "notebooks/"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+    "RUF", # ruff-specific
+]
+ignore = [
+    "E501", # line length is enforced by formatter, ruff just warns
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["B", "SIM"] # tests can be a bit looser
+
+# ----------------------------------------------------------------------------
+# Black: formatter (CLAUDE.md §7)
+# ----------------------------------------------------------------------------
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+extend-exclude = "(Code/|out/|notebooks/)"
+
+# ----------------------------------------------------------------------------
+# Pytest
+# ----------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+markers = [
+    "integration: tests that require a running docker compose stack (deselect with '-m \"not integration\"')",
+]

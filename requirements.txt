@@ -1,0 +1,31 @@
+# Pinned to keep the project reproducible (CLAUDE.md §1.7).
+# Adjust upper/lower bounds carefully; some pins reflect the Spark base
+# image (Spark 3.5.2 / Scala 2.12) the consumer runs against.
+
+# --- Traffic simulation ---
+uxsim==1.7.0
+Pillow==10.4.0
+
+# --- Streaming / data ---
+kafka-python==2.0.2
+pyspark==3.5.2
+pymongo==4.8.0
+
+# --- Numerics / data wrangling ---
+pandas==2.2.2
+numpy==1.26.4
+
+# --- Config ---
+pyyaml==6.0.2
+python-dotenv==1.0.1
+
+# --- REST API (bonus profile) ---
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+
+# --- Tests / lint (kept here for the single-image Docker build; in larger
+#     projects these would live in a [project.optional-dependencies] group) ---
+pytest==8.3.3
+pytest-mock==3.14.0
+ruff==0.6.9
+black==24.10.0
