@@ -1,0 +1,39 @@
+# Dockerfile.producer — UXSIM → Redpanda streaming producer.
+#
+# Builds a slim Python 3.11 image that runs
+# ``python -m traffic_pipeline.ingestion.kafka_publisher`` as its entry point.
+# The Spark consumer uses a separate image (ezachar/db_project2026:v0.2) and
+# is wired in a later phase.
+
+FROM python:3.12-slim-bookworm AS runtime
+
+# UXSIM pulls in Pillow / matplotlib which need libGL at import time even
+# when we disable show_mode/save_mode. gcc is required to build any wheel
+# that lacks a manylinux artifact for 3.12-slim.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
+        gcc \
+        libgl1 \
+        libglib2.0-0 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python deps first so layer caching survives source edits.
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Source tree + YAML defaults. The package is imported via PYTHONPATH rather
+# than ``pip install -e .`` to keep the image small.
+COPY src/ ./src/
+COPY config/ ./config/
+
+ENV PYTHONPATH=/app/src \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# Runtime config (broker, topic, intervals) is supplied by docker-compose via
+# environment variables — see .env.example for the full list.
+CMD ["python", "-m", "traffic_pipeline.ingestion.kafka_publisher"]

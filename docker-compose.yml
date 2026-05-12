@@ -1,0 +1,65 @@
+# Root compose stack for the traffic-streaming-pipeline.
+#
+# Phase 2 scope (intentionally narrow): only the Redpanda broker and the
+# dockerized UXSIM producer. The Spark master/worker/job and MongoDB will
+# be merged in from Code/docker-compose[dot]yml in Phase 6, together with
+# healthchecks, the topic-init one-shot, and named volumes.
+#
+# Verification recipe:
+#   docker compose build uxsim-producer
+#   docker compose up -d
+#   # wait ~10s for the broker, then create the topic once:
+#   docker exec -it redpanda rpk topic create uxsim
+#   docker exec -it redpanda rpk topic consume uxsim --num 3
+
+services:
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v23.3.10
+    container_name: redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      # Two listeners: internal for dsnet services, external for host tools.
+      - --kafka-addr
+      - internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr
+      - internal://redpanda:9092,external://localhost:19092
+      - --rpc-addr
+      - redpanda:33145
+      - --advertise-rpc-addr
+      - redpanda:33145
+    ports:
+      - "19092:19092"
+      - "9092:9092"
+      - "9644:9644"
+    networks:
+      - dsnet
+
+  uxsim-producer:
+    build:
+      context: .
+      dockerfile: Dockerfile.producer
+    image: traffic-pipeline/uxsim-producer:dev
+    container_name: uxsim-producer
+    depends_on:
+      - redpanda
+    environment:
+      # Internal listener — never localhost:19092 from inside dsnet.
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-uxsim}
+      PRODUCE_INTERVAL_SEC: ${PRODUCE_INTERVAL_SEC:-1}
+      SIMULATION_TMAX: ${SIMULATION_TMAX:-3600}
+      SIMULATION_SEED: ${SIMULATION_SEED:-}
+    restart: on-failure
+    networks:
+      - dsnet
+
+networks:
+  dsnet:
+    driver: bridge
