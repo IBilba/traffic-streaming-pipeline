@@ -169,10 +169,6 @@ End-to-end smoke test:
 python scripts/verify_pipeline.py
 ```
 
-## Contributing
-
-Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/); see the project [CLAUDE.md](CLAUDE.md) §5 for the full rules. One commit, one purpose; imperative mood; subject line is not a sentence.
-
 ## License
 
 [MIT](LICENSE).
