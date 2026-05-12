@@ -1,6 +1,6 @@
 """Streaming pipeline for UXSIM-generated vehicle traffic.
 
-The package is organised by concern (CLAUDE.md section 1.3):
+The package is organised by concern:
 
 * :mod:`traffic_pipeline.ingestion` -- UXSIM simulation and Kafka producer.
 * :mod:`traffic_pipeline.preprocessing` -- Spark schemas and JSON parsing.

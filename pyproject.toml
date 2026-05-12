@@ -34,7 +34,7 @@ dev = ["pytest>=8", "pytest-mock>=3.14", "ruff>=0.6", "black>=24"]
 
 [project.scripts]
 # Console entry points installed when the package is `pip install -e .`'d.
-# Container CMDs invoke these via `python -m` paths instead — both work.
+# Container CMDs invoke these via `python -m` paths instead; both work.
 traffic-producer = "traffic_pipeline.ingestion.kafka_publisher:main"
 traffic-consumer = "scripts.run_consumer:main"
 traffic-api      = "scripts.run_api:main"
@@ -47,7 +47,7 @@ traffic-verify   = "scripts.verify_pipeline:main"
 where = ["src"]
 
 # ----------------------------------------------------------------------------
-# Ruff: lint + import sort (CLAUDE.md §7)
+# Ruff: lint + import sort
 # ----------------------------------------------------------------------------
 [tool.ruff]
 line-length = 100
@@ -73,7 +73,7 @@ ignore = [
 "tests/**/*.py" = ["B", "SIM"] # tests can be a bit looser
 
 # ----------------------------------------------------------------------------
-# Black: formatter (CLAUDE.md §7)
+# Black: formatter
 # ----------------------------------------------------------------------------
 [tool.black]
 line-length = 100

@@ -31,10 +31,10 @@ def compute_link_stats(
     Drops UXSIM status rows (see :data:`DEFAULT_STATUS_LINKS`), then
     groups by simulation time and link and computes:
 
-    * ``vcount`` — number of platoon records on the link at time ``t``.
-    * ``vspeed`` — mean of the UXSIM ``v`` column at time ``t``. The
+    * ``vcount``: number of platoon records on the link at time ``t``.
+    * ``vspeed``: mean of the UXSIM ``v`` column at time ``t``. The
       assignment text calls this *speed*; the simulator emits it as
-      ``v`` and the simulator wins (see ``CLAUDE.md`` §7 glossary).
+      ``v`` and the simulator wins.
 
     The function is pure: no side effects, no ``SparkSession`` access,
     no schema assumptions beyond the presence of ``t``, ``link``, ``v``.
@@ -51,8 +51,9 @@ def compute_link_stats(
 
     Note:
         This aggregation has no watermark, so its writer must use
-        ``outputMode("update")`` rather than ``"append"`` — see
-        ``CLAUDE.md`` §7 cross-component invariants.
+        ``outputMode("update")`` rather than ``"append"``. The
+        ``groupBy("t","link")`` is unbounded in event time, and Spark
+        refuses ``append`` on an aggregation without a watermark.
     """
     filtered = parsed.where(~col("link").isin(list(status_links))) if status_links else parsed
     return filtered.groupBy("t", "link").agg(

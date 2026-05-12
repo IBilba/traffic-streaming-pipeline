@@ -4,7 +4,7 @@ End-to-end streaming pipeline that turns simulated vehicle trajectories into que
 
 ## What it does
 
-The pipeline produces synthetic vehicle traffic with [UXSIM](https://github.com/toruseo/UXsim), streams the resulting events through a [Redpanda](https://redpanda.com/) (Kafka-compatible) broker, processes them with [Spark Structured Streaming](https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html), and stores both the raw events and aggregated per-link statistics in [MongoDB](https://www.mongodb.com/). Everything runs in Docker — `docker compose up -d` is the only command you need to bring the whole stack online.
+The pipeline produces synthetic vehicle traffic with [UXSIM](https://github.com/toruseo/UXsim), streams the resulting events through a [Redpanda](https://redpanda.com/) (Kafka-compatible) broker, processes them with [Spark Structured Streaming](https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html), and stores both the raw events and aggregated per-link statistics in [MongoDB](https://www.mongodb.com/). Everything runs in Docker; `docker compose up -d` is the only command you need to bring the whole stack online.
 
 This is the course project for **Big Data Management Systems (CEID_NE4348)**, University of Patras, Spring 2026.
 
@@ -33,7 +33,7 @@ This is the course project for **Big Data Management Systems (CEID_NE4348)**, Un
                                                                               └───────────────┘
 ```
 
-Six containers run by default — `redpanda`, `topic-init` (one-shot), `spark-master`, `spark-worker`, `spark-job`, `mongo`, plus the `uxsim-producer` — and an optional `traffic-api` when the `api` profile is enabled.
+Six containers run by default (`redpanda`, `topic-init` one-shot, `spark-master`, `spark-worker`, `spark-job`, `mongo`) plus the `uxsim-producer`, and an optional `traffic-api` when the `api` profile is enabled.
 
 ## Installation
 
@@ -66,7 +66,7 @@ All knobs live in `.env` (copied from `.env.example`) and are passed into contai
 | `SIMULATION_TMAX` | `3600` | Total simulated seconds. |
 | `SIMULATION_SEED` | *(empty)* | Optional integer seed for reproducible UXSIM runs. |
 | `MONGO_URI` | `mongodb://mongo:27017` | URI for in-network services. |
-| `MONGO_URI_HOST` | `mongodb://localhost:27017` | URI for `mongosh` on the host. |
+| `MONGO_URI_HOST` | `mongodb://localhost:27018` | URI for `mongosh` / Compass on the host (shifted to avoid clashing with a host MongoDB on 27017). |
 | `MONGO_DATABASE` | `traffic` | Target database. |
 | `MONGO_RAW_COLLECTION` | `raw_data` | Per-event sink. |
 | `MONGO_STATS_COLLECTION` | `stats` | Per-(t, link) aggregated sink. |
@@ -142,13 +142,13 @@ traffic-streaming-pipeline/
 ├── Dockerfile.producer         # Image for UXSIM producer
 ├── Dockerfile.api              # Image for FastAPI service
 ├── config/                     # YAML configuration files
-├── src/traffic_pipeline/       # Python source — one subpackage per concern
+├── src/traffic_pipeline/       # Python source, one subpackage per concern
 │   ├── ingestion/              # UXSIM simulation + Kafka producer
 │   ├── preprocessing/          # Spark schemas + JSON parsing
 │   ├── models/                 # Aggregations (link stats, windowed stats)
 │   ├── evaluation/             # MongoDB inspection + sample queries
 │   └── serving/                # FastAPI REST API (bonus)
-├── scripts/                    # CLI entry points (run_producer, run_consumer, …)
+├── scripts/                    # CLI entry points (run_producer, run_consumer, ...)
 ├── tests/                      # pytest: unit/ + integration/
 ├── docs/                       # Architecture diagram, docker cheatsheet, report
 ├── notebooks/                  # Exploratory notebooks (not source of truth)
@@ -168,6 +168,10 @@ End-to-end smoke test:
 ```powershell
 python scripts/verify_pipeline.py
 ```
+
+## Contributing
+
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/): one commit, one purpose; imperative mood; subject line is not a sentence.
 
 ## License
 

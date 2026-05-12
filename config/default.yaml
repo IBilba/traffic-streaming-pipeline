@@ -27,3 +27,28 @@ kafka:
     max_attempts: 5
     initial_backoff_sec: 1.0
     backoff_multiplier: 2.0
+
+mongo:
+  # In-network URI for spark-job. Host-side scripts use localhost:27018
+  # (the container's 27017 is mapped to 27018 on the host).
+  uri: mongodb://mongo:27017
+  database: traffic
+  collections:
+    raw: raw_data
+    stats: stats
+    windowed: stats_windowed
+
+spark:
+  app_name: UXSIM-Consumer
+  # spark://spark-master:7077 inside dsnet; "local[*]" for ad-hoc host runs.
+  master: spark://spark-master:7077
+  # Where Structured Streaming persists offsets/state. One subdir per query.
+  checkpoint_root: /tmp/checkpoints
+  # Starting Kafka offsets for the readStream. "latest" skips backlog; use
+  # "earliest" to replay everything currently retained in the topic.
+  starting_offsets: latest
+  streaming:
+    # Tumbling-window size for the bonus windowed sink, in simulation seconds.
+    window_seconds: 30
+    # Allowed lateness for the windowed aggregation watermark.
+    watermark: "60 seconds"

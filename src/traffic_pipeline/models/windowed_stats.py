@@ -1,6 +1,6 @@
 """Tumbling-window aggregations over simulation time (bonus 1 + 2).
 
-The assignment asks for windowed statistics — by default 30-second
+The assignment asks for windowed statistics; by default 30-second
 windows of vehicle counts and min/avg/max speed per link. Time here is
 *simulation* time (the UXSIM ``t`` column, seconds since the start of
 the run), not wall-clock; the cast to a timestamp is purely a vehicle

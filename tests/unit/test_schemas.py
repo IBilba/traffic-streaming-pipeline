@@ -1,15 +1,15 @@
 """Unit tests for :mod:`traffic_pipeline.preprocessing`.
 
-These tests run against a local Spark session — no Kafka broker, no
-streaming. They verify that:
+These tests run against a local Spark session with no Kafka broker and
+no streaming. They verify that:
 
 * The UXSIM schema declares the expected columns with the expected
   Spark types.
 * ``parse_kafka_stream`` decodes a JSON-bytes payload into one row per
   message with correctly typed top-level columns.
 * Status rows that UXSIM emits (``link == "trip_end"`` and friends) are
-  preserved by the parser — semantic filtering is a downstream
-  concern, not a parsing one.
+  preserved by the parser; semantic filtering is a downstream concern,
+  not a parsing one.
 """
 
 from __future__ import annotations

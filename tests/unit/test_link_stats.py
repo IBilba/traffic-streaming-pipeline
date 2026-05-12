@@ -1,8 +1,9 @@
 """Unit tests for :mod:`traffic_pipeline.models.link_stats`.
 
-Inputs are built via ``spark.sql("VALUES ...")`` — a JVM-only path —
+Inputs are built via ``spark.sql("VALUES ...")``, a JVM-only path,
 to dodge the Windows ``createDataFrame`` socket-timeout footgun
-documented in ``handoff.md`` §"Things tried and learned".
+(``createDataFrame`` spawns a Python worker that the JVM cannot reach
+on Windows loopback; pure-Catalyst paths avoid the handshake).
 """
 
 from __future__ import annotations

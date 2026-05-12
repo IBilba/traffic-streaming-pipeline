@@ -1,4 +1,4 @@
-# Dockerfile.producer — UXSIM → Redpanda streaming producer.
+# Dockerfile.producer: UXSIM to Redpanda streaming producer.
 #
 # Builds a slim Python 3.11 image that runs
 # ``python -m traffic_pipeline.ingestion.kafka_publisher`` as its entry point.
@@ -35,5 +35,5 @@ ENV PYTHONPATH=/app/src \
     PYTHONDONTWRITEBYTECODE=1
 
 # Runtime config (broker, topic, intervals) is supplied by docker-compose via
-# environment variables — see .env.example for the full list.
+# environment variables; see .env.example for the full list.
 CMD ["python", "-m", "traffic_pipeline.ingestion.kafka_publisher"]

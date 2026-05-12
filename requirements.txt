@@ -1,4 +1,4 @@
-# Pinned to keep the project reproducible (CLAUDE.md §1.7).
+# Pinned to keep the project reproducible.
 # Adjust upper/lower bounds carefully; some pins reflect the Spark base
 # image (Spark 3.5.2 / Scala 2.12) the consumer runs against.
 

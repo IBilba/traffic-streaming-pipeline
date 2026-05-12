@@ -1,8 +1,8 @@
 """Spark schemas for events flowing through the traffic pipeline.
 
-Schemas are static, declarative metadata — kept apart from any I/O so
-they can be imported by producers, consumers, and tests without dragging
-in a ``SparkSession``.
+Schemas are static, declarative metadata. They are kept apart from any
+I/O so they can be imported by producers, consumers, and tests without
+dragging in a ``SparkSession``.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from pyspark.sql.types import DoubleType, IntegerType, StringType, StructType
 #: Column Type         Meaning
 #: ====== ============ ==========================================
 #: name   StringType   Vehicle (platoon) identifier.
-#: dn     IntegerType  Platoon size — vehicles grouped for perf.
+#: dn     IntegerType  Platoon size; vehicles grouped for perf.
 #: orig   StringType   Origin node name.
 #: dest   StringType   Destination node name.
 #: t      DoubleType   Simulation time in seconds (not wall-clock).

@@ -6,6 +6,7 @@ foreachBatch sinks, checkpoint paths) lives in
 ``scripts/run_consumer.py``.
 
 Kept intentionally empty of re-exports so that ``python -m`` execution
-of any submodule does not double-load it under two identities
-(see Phase 1 footgun in ``handoff.md``).
+of any submodule does not double-load it under two identities (the
+package-import path and ``__main__`` would otherwise resolve to two
+separate module objects).
 """

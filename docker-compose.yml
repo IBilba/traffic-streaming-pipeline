@@ -1,16 +1,18 @@
 # Root compose stack for the traffic-streaming-pipeline.
 #
-# Phase 2 scope (intentionally narrow): only the Redpanda broker and the
-# dockerized UXSIM producer. The Spark master/worker/job and MongoDB will
-# be merged in from Code/docker-compose[dot]yml in Phase 6, together with
-# healthchecks, the topic-init one-shot, and named volumes.
+# Phase 5 scope: Redpanda broker, UXSIM producer, Spark master/worker/job,
+# and MongoDB -- enough to run the full UXSIM -> Redpanda -> Spark ->
+# MongoDB pipeline end-to-end. Healthchecks, named volumes, and the
+# topic-init one-shot service are queued for Phase 6.
 #
 # Verification recipe:
 #   docker compose build uxsim-producer
 #   docker compose up -d
 #   # wait ~10s for the broker, then create the topic once:
 #   docker exec -it redpanda rpk topic create uxsim
-#   docker exec -it redpanda rpk topic consume uxsim --num 3
+#   docker logs -f spark-job        # expect "Batch processed"
+#   docker exec -it mongo mongosh --eval \
+#       "use traffic; db.raw_data.countDocuments()"
 
 services:
   redpanda:
@@ -41,6 +43,81 @@ services:
     networks:
       - dsnet
 
+  mongodb:
+    image: mongo:7.0
+    container_name: mongo
+    ports:
+      # Host port shifted to 27018 to avoid clashing with a host-side
+      # MongoDB on the default 27017. In-network services still use
+      # mongo:27017.
+      - "27018:27017"
+    networks:
+      - dsnet
+
+  spark-master:
+    image: ezachar/db_project2026:v0.2
+    entrypoint: []
+    container_name: spark-master
+    command: >
+      /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+      --host spark-master
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    networks:
+      - dsnet
+
+  spark-worker:
+    image: ezachar/db_project2026:v0.2
+    entrypoint: []
+    container_name: spark-worker
+    command: >
+      /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker
+      spark://spark-master:7077
+    depends_on:
+      - spark-master
+    ports:
+      - "8081:8081"
+    networks:
+      - dsnet
+
+  spark-job:
+    image: ezachar/db_project2026:v0.2
+    entrypoint: []
+    container_name: spark-job
+    # Read-only mounts: container never writes back into the repo. The
+    # checkpoint root lives inside the container's tmpfs (see
+    # config/default.yaml -> spark.checkpoint_root).
+    volumes:
+      - ./src:/app/src:ro
+      - ./scripts:/app/scripts:ro
+      - ./config:/app/config:ro
+    environment:
+      PYTHONPATH: /app/src
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-uxsim}
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DATABASE: traffic
+      SPARK_MASTER: spark://spark-master:7077
+      CHECKPOINT_ROOT: /tmp/checkpoints
+    # The base image runs as a non-root user without a writable home, so
+    # we cannot pip-install PyYAML at startup. run_consumer.py treats
+    # PyYAML as optional and falls back to env vars (set above), which
+    # already carry every setting the consumer needs.
+    command: >
+      /opt/spark/bin/spark-submit
+      --master spark://spark-master:7077
+      --jars /opt/spark/jars/spark-sql-kafka-0-10_2.12-3.5.2.jar,/opt/spark/jars/kafka-clients-3.5.2.jar,/opt/spark/jars/spark-token-provider-kafka-0-10_2.12-3.5.2.jar,/opt/spark/jars/commons-pool2-2.11.1.jar,/opt/spark/jars/mongo-spark-connector_2.12-10.3.0.jar,/opt/spark/jars/mongodb-driver-sync-4.11.1.jar,/opt/spark/jars/mongodb-driver-core-4.11.1.jar,/opt/spark/jars/bson-4.11.1.jar,/opt/spark/jars/mongodb-driver-legacy-4.11.1.jar
+      --conf spark.executorEnv.PYTHONPATH=/app/src
+      /app/scripts/run_consumer.py
+    depends_on:
+      - spark-master
+      - spark-worker
+      - mongodb
+      - redpanda
+    networks:
+      - dsnet
+
   uxsim-producer:
     build:
       context: .
@@ -50,7 +127,7 @@ services:
     depends_on:
       - redpanda
     environment:
-      # Internal listener — never localhost:19092 from inside dsnet.
+      # Internal listener. Never localhost:19092 from inside dsnet.
       KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
       KAFKA_TOPIC: ${KAFKA_TOPIC:-uxsim}
       PRODUCE_INTERVAL_SEC: ${PRODUCE_INTERVAL_SEC:-1}

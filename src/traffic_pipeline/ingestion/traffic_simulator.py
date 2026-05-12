@@ -28,8 +28,8 @@ def simulate_traffic(world: World) -> pd.DataFrame:
     Returns:
         DataFrame returned by ``world.analyzer.vehicles_to_pandas()``.
         Columns: ``name``, ``dn``, ``orig``, ``dest``, ``t``, ``link``,
-        ``x``, ``s``, ``v`` (UXSIM exposes vehicle speed as ``v``, not
-        ``speed`` -- see CLAUDE.md section 7 glossary).
+        ``x``, ``s``, ``v``. UXSIM exposes vehicle speed as ``v``, not
+        ``speed``; the simulator's column name wins.
     """
     logger.info("Running UXSIM simulation (tmax=%s s).", world.TMAX)
     world.exec_simulation()

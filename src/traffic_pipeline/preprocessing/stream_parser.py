@@ -29,13 +29,13 @@ def parse_kafka_stream(df_raw: DataFrame, schema: StructType) -> DataFrame:
             ``spark.readStream.format("kafka").load()``. Must expose a
             ``value`` column of ``BinaryType`` containing UTF-8 encoded
             JSON.
-        schema: Expected JSON shape — typically
+        schema: Expected JSON shape; typically
             :data:`traffic_pipeline.preprocessing.schemas.UXSIM_EVENT_SCHEMA`.
 
     Returns:
         DataFrame with one column per top-level field of ``schema``.
         Rows whose ``value`` does not parse as JSON, or whose JSON does
-        not match the schema, surface as all-null rows — they are not
+        not match the schema, surface as all-null rows; they are not
         dropped here. Downstream aggregations are responsible for any
         semantic filtering (e.g., excluding UXSIM status rows).
     """
