@@ -1,0 +1,29 @@
+# Default configuration for the traffic streaming pipeline.
+#
+# Precedence (lowest -> highest): this file < environment variables < CLI flags.
+# Do NOT put secrets here -- this file is committed.
+
+simulation:
+  # Total simulated time in seconds. The course example uses 3600 (1 hour).
+  tmax: 3600
+  # UXSIM platoon size: vehicles are grouped for performance.
+  deltan: 5
+  # Random seed for reproducible runs. null = random each launch.
+  seed: null
+  # Base traffic-light cycle (seconds) for signalled intersections I1..I4.
+  signal_time: 20
+  # Mean OD demand (vehicles / step). The simulator samples uniformly in [0, demand].
+  demand: 2.0
+  # How often demand is re-sampled, in simulated seconds.
+  demand_step_seconds: 30
+
+kafka:
+  # In-network address. For host-side scripts use localhost:19092 instead.
+  bootstrap_servers: redpanda:9092
+  topic: uxsim
+  # Wall-clock pause between simulation steps when replaying records.
+  produce_interval_sec: 1.0
+  retries:
+    max_attempts: 5
+    initial_backoff_sec: 1.0
+    backoff_multiplier: 2.0
