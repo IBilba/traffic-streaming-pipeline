@@ -7,7 +7,11 @@ uxsim==1.7.0
 Pillow==10.4.0
 
 # --- Streaming / data ---
-kafka-python==2.0.2
+# kafka-python-ng is the maintained drop-in fork of kafka-python; the original
+# 2.0.2 ships a vendored `six` that breaks on Python 3.12+
+# (`ModuleNotFoundError: No module named 'kafka.vendor.six.moves'`).
+# Import path stays the same: `from kafka import KafkaProducer`.
+kafka-python-ng==2.2.3
 pyspark==3.5.2
 pymongo==4.8.0
 
