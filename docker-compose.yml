@@ -1,18 +1,17 @@
 # Root compose stack for the traffic-streaming-pipeline.
 #
-# Phase 5 scope: Redpanda broker, UXSIM producer, Spark master/worker/job,
-# and MongoDB -- enough to run the full UXSIM -> Redpanda -> Spark ->
-# MongoDB pipeline end-to-end. Healthchecks, named volumes, and the
-# topic-init one-shot service are queued for Phase 6.
+# Brings up Redpanda, MongoDB, the UXSIM producer, the Spark master/worker
+# pair, and the spark-submit job that consumes the topic and writes the
+# three traffic.* collections. The topic-init one-shot service creates the
+# `uxsim` topic automatically once the broker is healthy, so no manual
+# `rpk topic create` is required.
 #
 # Verification recipe:
-#   docker compose build uxsim-producer
-#   docker compose up -d
-#   # wait ~10s for the broker, then create the topic once:
-#   docker exec -it redpanda rpk topic create uxsim
-#   docker logs -f spark-job        # expect "Batch processed"
+#   docker compose down -v && docker compose build && docker compose up -d
+#   docker compose ps              # all services Up; redpanda/mongo healthy
+#   docker logs -f spark-job       # expect "Batch processed" within ~60s
 #   docker exec -it mongo mongosh --eval \
-#       "use traffic; db.raw_data.countDocuments()"
+#       "db.getSiblingDB('traffic').getCollection('raw_data').countDocuments()"
 
 services:
   redpanda:
@@ -40,6 +39,33 @@ services:
       - "19092:19092"
       - "9092:9092"
       - "9644:9644"
+    healthcheck:
+      # `rpk cluster health` exits 0 only when the controller is up and all
+      # partitions have a leader. Cheap and reliable enough for compose.
+      test: ["CMD", "rpk", "cluster", "health", "--exit-when-healthy"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - dsnet
+
+  topic-init:
+    # One-shot service that creates the `uxsim` topic once redpanda is
+    # healthy, then exits. Reuses the redpanda image so `rpk` is on PATH.
+    # `|| true` keeps the exit code at 0 when the topic already exists
+    # (idempotent on `docker compose up` after the first run).
+    image: docker.redpanda.com/redpandadata/redpanda:v23.3.10
+    container_name: topic-init
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - >
+        rpk topic create ${KAFKA_TOPIC:-uxsim}
+        --brokers redpanda:9092 || true
+    restart: "no"
     networks:
       - dsnet
 
@@ -51,6 +77,16 @@ services:
       # MongoDB on the default 27017. In-network services still use
       # mongo:27017.
       - "27018:27017"
+    volumes:
+      # Named volume so `traffic.*` collections survive `docker compose
+      # down` (without `-v`). `down -v` still wipes the volume.
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     networks:
       - dsnet
 
@@ -111,10 +147,16 @@ services:
       --conf spark.executorEnv.PYTHONPATH=/app/src
       /app/scripts/run_consumer.py
     depends_on:
-      - spark-master
-      - spark-worker
-      - mongodb
-      - redpanda
+      spark-master:
+        condition: service_started
+      spark-worker:
+        condition: service_started
+      mongodb:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      topic-init:
+        condition: service_completed_successfully
     networks:
       - dsnet
 
@@ -125,7 +167,10 @@ services:
     image: traffic-pipeline/uxsim-producer:dev
     container_name: uxsim-producer
     depends_on:
-      - redpanda
+      redpanda:
+        condition: service_healthy
+      topic-init:
+        condition: service_completed_successfully
     environment:
       # Internal listener. Never localhost:19092 from inside dsnet.
       KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
@@ -140,3 +185,7 @@ services:
 networks:
   dsnet:
     driver: bridge
+
+volumes:
+  mongo_data:
+    driver: local
