@@ -158,6 +158,61 @@ def test_link_detail_combines_summary_and_ordered_series() -> None:
     coll.find.return_value.sort.assert_called_once_with("t", 1)
 
 
+def test_latest_t_returns_max_t_from_sorted_find_one() -> None:
+    db = _make_db()
+    db["stats"].find_one.return_value = {"t": 1820.0}
+    repo = TrafficRepository(db)
+
+    assert repo.latest_t() == 1820.0
+
+    find_one_call = db["stats"].find_one.call_args
+    assert find_one_call.kwargs["sort"] == [("t", -1)]
+    assert find_one_call.kwargs["projection"] == {"_id": 0, "t": 1}
+
+
+def test_latest_t_returns_none_when_collection_is_empty() -> None:
+    db = _make_db()
+    db["stats"].find_one.return_value = None
+    repo = TrafficRepository(db)
+
+    assert repo.latest_t() is None
+
+
+def test_link_state_at_emits_match_sort_group_pipeline_and_returns_rows() -> None:
+    canned = [
+        {"link": "I1W1", "vcount": 12, "vspeed": 28.4, "t": 1820.0},
+        {"link": "I2I3", "vcount": 3, "vspeed": 41.0, "t": 1820.0},
+    ]
+    db = _make_db(aggregate_results={"stats": canned})
+    repo = TrafficRepository(db)
+
+    result = repo.link_state_at(t=1820.0, tolerance=2.0)
+
+    assert result == canned
+    pipeline = db["stats"].aggregate.call_args.args[0]
+    stages = [next(iter(s)) for s in pipeline]
+    assert stages == ["$match", "$sort", "$group", "$project"]
+    assert pipeline[0]["$match"] == {"t": {"$gte": 1818.0, "$lte": 1820.0}}
+    assert pipeline[1]["$sort"] == {"t": -1}
+    assert pipeline[2]["$group"]["_id"] == "$link"
+    assert pipeline[2]["$group"]["vcount"] == {"$first": "$vcount"}
+    assert pipeline[2]["$group"]["vspeed"] == {"$first": "$vspeed"}
+
+
+def test_link_state_at_rejects_negative_tolerance() -> None:
+    repo = TrafficRepository(_make_db())
+    with pytest.raises(ValueError):
+        repo.link_state_at(t=10.0, tolerance=-0.1)
+
+
+def test_link_state_at_routes_to_custom_stats_collection() -> None:
+    db = _make_db(aggregate_results={"per_link_stats": []})
+    repo = TrafficRepository(db, stats_collection="per_link_stats")
+
+    repo.link_state_at(t=5.0)
+    db.__getitem__.assert_any_call("per_link_stats")
+
+
 def test_custom_collection_names_route_queries_to_the_right_collection() -> None:
     db = _make_db(
         aggregate_results={"per_link_stats": [{"link": "X", "avg_speed": 1.0, "samples": 1}]},
