@@ -208,6 +208,34 @@ services:
     networks:
       - dsnet
 
+  dashboard:
+    # Gated behind the `dashboard` profile so the default `compose up`
+    # keeps the 6-container pipeline. Enable with
+    # `docker compose --profile dashboard up -d`. Reads MongoDB directly
+    # through TrafficRepository; the `api` profile is NOT required.
+    profiles: ["dashboard"]
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    image: traffic-pipeline/dashboard:dev
+    container_name: dashboard
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017}
+      MONGO_DATABASE: ${MONGO_DATABASE:-traffic}
+      MONGO_RAW_COLLECTION: ${MONGO_RAW_COLLECTION:-raw_data}
+      MONGO_STATS_COLLECTION: ${MONGO_STATS_COLLECTION:-stats}
+      MONGO_WINDOWED_COLLECTION: ${MONGO_WINDOWED_COLLECTION:-stats_windowed}
+      DASHBOARD_HOST: ${DASHBOARD_HOST:-0.0.0.0}
+      DASHBOARD_PORT: ${DASHBOARD_PORT:-8501}
+    ports:
+      - "${DASHBOARD_PORT:-8501}:8501"
+    restart: on-failure
+    networks:
+      - dsnet
+
 networks:
   dsnet:
     driver: bridge

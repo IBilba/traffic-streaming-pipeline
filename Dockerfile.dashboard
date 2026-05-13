@@ -1,0 +1,35 @@
+# Dockerfile.dashboard: Streamlit dashboard for the streaming pipeline.
+#
+# Mirrors Dockerfile.api (python:3.12-slim-bookworm + apt upgrade) so the
+# three service images share a base layer cache. Streamlit, Plotly, and
+# streamlit-autorefresh ship pure-Python wheels, so no system libs are
+# required beyond what is already in the base image.
+
+FROM python:3.12-slim-bookworm AS runtime
+
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY src/ ./src/
+COPY config/ ./config/
+
+ENV PYTHONPATH=/app/src \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    DASHBOARD_HOST=0.0.0.0 \
+    DASHBOARD_PORT=8501
+
+EXPOSE 8501
+
+# Streamlit picks host/port from env via the shell-form CMD so a
+# downstream operator can tweak them without rebuilding the image.
+# --server.headless avoids the "open browser?" prompt and the welcome
+# email survey on first launch inside a container.
+CMD ["sh", "-c", "streamlit run /app/src/traffic_pipeline/dashboard/app.py --server.address ${DASHBOARD_HOST} --server.port ${DASHBOARD_PORT} --server.headless true"]
