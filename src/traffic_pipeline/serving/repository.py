@@ -54,6 +54,70 @@ class TrafficRepository:
         """
         return bool(self.db.command("ping").get("ok"))
 
+    def latest_t(self) -> float | None:
+        """Return the largest ``t`` value present in the stats collection.
+
+        Returns:
+            The maximum simulation time seen so far, or ``None`` if the
+            collection is empty (typical right after ``docker compose
+            up`` before the first batch lands).
+        """
+        doc = self.db[self.stats_collection].find_one(
+            sort=[("t", -1)],
+            projection={"_id": 0, "t": 1},
+        )
+        if doc is None:
+            return None
+        return float(doc["t"])
+
+    def link_state_at(
+        self, t: float, tolerance: float = 1.0
+    ) -> list[Mapping[str, Any]]:
+        """Return the most recent ``(vcount, vspeed)`` per link near time ``t``.
+
+        For each link, keeps the row with the largest ``t`` in the
+        window ``[t - tolerance, t]``. Links with no samples in that
+        window are omitted. Used by the dashboard network map to color
+        edges by their current state without a second collection scan.
+
+        Args:
+            t: Simulation time to snapshot at.
+            tolerance: How far back (in simulation seconds) to look for
+                a sample when the exact step ``t`` has no row for a
+                given link. Defaults to one second, which matches the
+                producer's default emission interval.
+
+        Returns:
+            List of ``{"link", "vcount", "vspeed", "t"}`` documents.
+
+        Raises:
+            ValueError: If ``tolerance`` is negative.
+        """
+        if tolerance < 0:
+            raise ValueError(f"tolerance must be non-negative, got {tolerance}")
+        pipeline = [
+            {"$match": {"t": {"$gte": t - tolerance, "$lte": t}}},
+            {"$sort": {"t": -1}},
+            {
+                "$group": {
+                    "_id": "$link",
+                    "vcount": {"$first": "$vcount"},
+                    "vspeed": {"$first": "$vspeed"},
+                    "t": {"$first": "$t"},
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "link": "$_id",
+                    "vcount": 1,
+                    "vspeed": 1,
+                    "t": 1,
+                }
+            },
+        ]
+        return list(self.db[self.stats_collection].aggregate(pipeline))
+
     def avg_speed_per_link(self) -> list[Mapping[str, Any]]:
         """Mean ``vspeed`` per link across the whole simulation.
 
