@@ -1,6 +1,6 @@
 # Architecture
 
-End-to-end description of the streaming pipeline. The system is six containers by default (plus one optional REST API container) running on a single Docker bridge network called `dsnet`.
+End-to-end description of the streaming pipeline. The system is six containers by default (plus two optional containers gated by Compose profiles: a REST API and a Streamlit dashboard) running on a single Docker bridge network called `dsnet`.
 
 ## Component map
 
@@ -32,14 +32,15 @@ End-to-end description of the streaming pipeline. The system is six containers b
                        │          ▼                   │
                        │     ┌─────────┐              │
                        │     │  mongo  │◀── traffic-api (api profile)
-                       │     │ :27017  │              │
+                       │     │ :27017  │◀── dashboard (dashboard profile)
                        │     └─────────┘              │
                        └──────────────────────────────┘
 
 External listeners (host machine):
-  - Redpanda: localhost:19092   (host-side `rpk`, ad hoc producers)
-  - MongoDB:  localhost:27018   (mongosh, Compass)
-  - FastAPI:  localhost:8000    (api profile only)
+  - Redpanda:  localhost:19092   (host-side `rpk`, ad hoc producers)
+  - MongoDB:   localhost:27018   (mongosh, Compass)
+  - FastAPI:   localhost:8000    (api profile only)
+  - Dashboard: localhost:8501    (dashboard profile only)
 ```
 
 Every service inside `dsnet` reaches every other service by its compose name. `redpanda:9092` and `localhost:19092` resolve to the same broker through two different listeners; confusing them is the single most common error when prototyping from the host.
@@ -115,4 +116,4 @@ The Kafka payload is the JSON encoding of one row of
 
 ## Deployment topology
 
-There is one deployment target: a developer laptop running Docker Desktop. No staging, no production. The `api` Compose profile is opt-in so that the default `docker compose up -d` stays at six containers (producer, broker, topic-init, spark master, spark worker, spark job, mongo).
+There is one deployment target: a developer laptop running Docker Desktop. No staging, no production. The `api` and `dashboard` Compose profiles are opt-in so that the default `docker compose up -d` stays at six containers (producer, broker, topic-init, spark master, spark worker, spark job, mongo). The dashboard reads MongoDB directly through `TrafficRepository`; enabling `--profile dashboard` does **not** require `--profile api`.

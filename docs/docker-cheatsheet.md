@@ -8,6 +8,7 @@ the repo root with `docker-compose.yml` next to you.
 ```powershell
 docker compose up -d                       # bring everything up in the background
 docker compose --profile api up -d         # also start traffic-api
+docker compose --profile dashboard up -d   # also start the Streamlit dashboard (http://localhost:8501)
 docker compose ps                          # list services + health status
 docker compose stop                        # stop containers, keep volumes
 docker compose down                        # stop and remove containers, keep volumes
